@@ -1,0 +1,18 @@
+{
+  "name": "angular-cynny",
+  "version": "0.1.0",
+  "description": "Cynny browser module",
+  "main": "index.js",
+  "scripts": {
+    "test": "gulp test"
+  },
+  "keywords": [
+    "cynny",
+    "cynny",
+    "space",
+    "object",
+    "storage"
+  ],
+  "author": "Michael Kuk",
+  "license": "MIT"
+}
