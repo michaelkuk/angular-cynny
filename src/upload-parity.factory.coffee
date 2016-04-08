@@ -1,7 +1,8 @@
-factory = ()->
+factory = ($http, $q)->
     class CynnyParityUpload
 
         _file: null
+        _fileSize: null
 
         _signedToken: null
         _uploadToken: null
@@ -25,10 +26,10 @@ factory = ()->
         _chunkCrc: null
 
         constructor: (params={}, index)->
-            required = ['signedToken', 'uploadToken', 'storageUrl', 'bucket', 'object', 'totalChunks', 'chunkSize', 'parityStep', 'file']
+            required = ['signedToken', 'uploadToken', 'storageUrl', 'bucket', 'object', 'totalChunks', 'chunkSize', 'parityStep', 'file', 'fileSize']
             @_processParams(params, required)
 
-            @_xorLength = Math.min((index + 1) * params.parity_step, params.chunks - 1)
+            @_xorLength = Math.min((index + 1) * @_parityStep, @_totalChunks - 1)
             @_xorIndex = index * params.parityStep
 
         _processParams: (params, required)->
@@ -39,26 +40,53 @@ factory = ()->
                 @["_#{p}"] = params[p]
 
         upload: ()->
-            return
+            return @_calculateParity().then(@_uploadForm.bind(@)).then(@_destroy.bind(@))
+
+        _destroy: ()->
+            @_file = null
+
+            @_signedToken = null
+            @_uploadToken = null
+
+            @_storageUrl = null
+            @_bucket = null
+            @_object = null
+
+            @_chunkSize = null
+            @_parityStep = null
+            @_totalChunks = null
+
+            @_chunkIndex = null
+
+            @_xorIndex = null
+            @_xorLength = null
+
+            @_chunkArrayBuffer = null
+            @_tempArrayBuffer = null
+
+            @_chunkCrc = null
+
+            return true
 
         _calculateParity: ()->
             return $q (resolve, reject)=>
                 criteria = ()=>
                     return @_xorIndex < @_xorLength
 
-                iterator: (cb)=>
+                iterator = (cb)=>
                     start = @_chunkSize * @_xorIndex
                     end = Math.min(start + @_chunkSize, @_fileSize)
-
                     if start < @_fileSize
                         @_readFileChunk(start, end).then(@_parityIteration.bind(@)).then ()=>
                             @_xorIndex += 1
                             cb()
+                        .catch (err)=>
+                            cb(err)
                     else
                         @_xorIndex += 1
                         cb()
 
-                callback: (err)=>
+                callback = (err)=>
                     if err
                         reject(err)
                     else
@@ -81,6 +109,8 @@ factory = ()->
                         @_chunkArrayBuffer[i] ^= arr[i]
                         i += 1
 
+                    arr = null
+
                     return resolve()
 
         _readFileChunk: (start, end)->
@@ -91,9 +121,8 @@ factory = ()->
                     reject(event)
 
                 reader.onloadend = (event)=>
-                    return false unless evt.target.readyState == FileReader.DONE
-
-                    @_tempArrayBuffer = evt.target.result
+                    return false unless event.target.readyState == FileReader.DONE
+                    @_tempArrayBuffer = event.target.result
 
                     resolve()
 
@@ -102,7 +131,7 @@ factory = ()->
 
         _uploadForm: ()->
             return $q (resolve, reject)=>
-                httpOptions:
+                httpOptions =
                     transformRequest: angular.identity
                     headers:
                         'Content-Type': undefined
@@ -114,6 +143,7 @@ factory = ()->
                 fd.append('chunk', new Blob([@_chunkArrayBuffer], {type: "application/octet-stream", size: @_chunkArrayBuffer.length }))
 
                 url = "#{@_storageUrl}/b/#{@_bucket}/o/#{@_object}/cnk/#{@_chunkIndex}?Parity=1"
+
                 $http.put(url, fd, httpOptions)
                 .then ()=>
                     # should not trigger
@@ -128,11 +158,10 @@ factory = ()->
             a = 0
             b = 0
 
-            data = @_chunkArrayBuffer
-
-            for n in data
+            for n in @_chunkArrayBuffer
                 a = (a + Number(n)) % 65521
                 b = (b + a) % 65521
 
-            data = null # Garbage collection tweak
             return ((b << 16) | a) >>> 0
+
+angular.module('cynny').factory('CynnyParityUploader', ['$http', '$q', factory])

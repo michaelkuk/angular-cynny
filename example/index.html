@@ -1,0 +1,95 @@
+<!doctype html>
+<html ng-app="cynny">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Cynny Testing</title>
+
+    <script src="../components/angular/angular.js"></script>
+    <script src="../components/async/dist/async.js"></script>
+    <script src="../components/SparkMD5/spark-md5.js"></script>
+
+    <script src="../dist/cynny.module.js"></script>
+    <script src="../dist/md5.factory.js"></script>
+    <script src="../dist/upload-chunk.factory.js"></script>
+    <script src="../dist/upload-parity.factory.js"></script>
+    <script src="../dist/uploader.factory.js"></script>
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" media="all" title="no title" charset="utf-8">
+
+    <script>
+        angular.module('cynny').controller('test', ['$scope', '$http', 'CynnyUploader', function($scope, $http, CynnyUploader) {
+            $scope.result = 'none'
+            $scope.in = {
+                object: 'some-object'
+            };
+
+
+
+            var options = {
+                headers:{
+                    token: "somethign"
+                }
+            };
+
+
+            $scope.clickHash = function() {
+                var uri = "http://localhost:8686/download/Welcome/" + $scope.in.object;
+                var file = document.getElementById('my-file').files[0]
+
+                $http.get(uri, options).then(function(result){
+                    var params = {
+                        storageUrl: 'http://cy0.cynnylanspace.com',
+                        bucket: 'Welcome',
+                        object: $scope.in.object,
+                        signedToken: result.data.data.token,
+                        file: file
+                    };
+
+                    var uploader = new CynnyUploader(params);
+
+                    uploader.onPreparetionProgress = function(prog){
+                        console.log('Preparation progress: ' + prog + '%');
+                    };
+
+                    uploader.onUploadProgress = function(prog){
+                        console.log('Upload progress: ' + prog + '%');
+                    };
+
+                    uploader.upload().then(function(){
+                        console.log('finished');
+                    }).catch(function(err){
+                        console.error(JSON.stringify(err, null, 4));
+                    });
+                });
+            };
+        }])
+    </script>
+</head>
+
+<body>
+
+    <div class="container" ng-controller="test">
+        <div class="row">
+            <div class="col-xs-12">
+                <h1>Hash: {{result}}</h1>
+
+                <div class="form-group">
+                    <label for="object-name">Object name</label>
+                    <input name="object-name" id="object-name" type="text" ng-model="in.object" class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <label for="my-file">File</label>
+                    <input name="my-file" id="my-file" type="file" />
+                </div>
+
+                <button type="button" class="btn btn-lg btn-success" ng-click="clickHash()">Hash</button>
+
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

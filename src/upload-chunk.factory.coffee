@@ -16,7 +16,7 @@ factory = ($http, $q)->
         _chunkArrayBuffer: null
 
         constructor: (params={}, index)->
-            required = ['signedToken', 'uploadToken', 'storageUrl', 'bucket', 'object', 'chunkSize', 'file']
+            required = ['signedToken', 'uploadToken', 'storageUrl', 'bucket', 'object', 'chunkSize', 'file', 'fileSize']
             @_chunkIndex = index
             @_processParams(params, required)
 
@@ -32,7 +32,7 @@ factory = ($http, $q)->
 
         _uploadForm: ()->
             return $q (resolve, reject)=>
-                httpOptions:
+                httpOptions =
                     transformRequest: angular.identity
                     headers:
                         'Content-Type': undefined
@@ -44,6 +44,7 @@ factory = ($http, $q)->
                 fd.append('chunk', new Blob([@_chunkArrayBuffer], {type: "application/octet-stream", size: @_chunkArrayBuffer.length }))
 
                 url = "#{@_storageUrl}/b/#{@_bucket}/o/#{@_object}/cnk/#{@_chunkIndex}"
+
                 $http.put(url, fd, httpOptions)
                 .then ()=>
                     # should not trigger
@@ -62,31 +63,30 @@ factory = ($http, $q)->
                     reject(event)
 
                 reader.onloadend = (event)=>
-                    return false unless evt.target.readyState == FileReader.DONE
+                    return false unless event.target.readyState == FileReader.DONE
 
-                    @_chunkArrayBuffer = evt.target.result
-
+                    @_chunkArrayBuffer = event.target.result
                     resolve()
 
                 start = @_chunkIndex * @_chunkSize
-                end = Math.min(start + @_chunkSize, file.size)
+                end = Math.min(start + @_chunkSize, @_fileSize)
                 reader.readAsArrayBuffer(@_file.slice(start, end))
                 return
 
         _destroy: ()->
-            @_file: null
+            @_file = null
 
-            @_signedToken: null
-            @_uploadToken: null
+            @_signedToken = null
+            @_uploadToken = null
 
-            @_storageUrl: null
-            @_bucket: null
-            @_object: null
+            @_storageUrl = null
+            @_bucket = null
+            @_object = null
 
-            @_chunkSize: null
-            @_chunkIndex: null
+            @_chunkSize = null
+            @_chunkIndex = null
 
-            @_chunkArrayBuffer: null
+            @_chunkArrayBuffer = null
             return true
 
         _crcAdler32: ()->

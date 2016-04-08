@@ -24,6 +24,7 @@
   ],
   "dependencies": {
     "angular": "^1.2",
-    "async": "^1.5.2"
+    "async": "^1.5.2",
+    "SparkMD5": "https://github.com/satazor/js-spark-md5.git#^2.0.2"
   }
 }
