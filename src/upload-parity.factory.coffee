@@ -29,6 +29,8 @@ factory = ($http, $q)->
             required = ['signedToken', 'uploadToken', 'storageUrl', 'bucket', 'object', 'totalChunks', 'chunkSize', 'parityStep', 'file', 'fileSize']
             @_processParams(params, required)
 
+            @_chunkIndex = index
+
             @_xorLength = Math.min((index + 1) * @_parityStep, @_totalChunks - 1)
             @_xorIndex = index * params.parityStep
 
